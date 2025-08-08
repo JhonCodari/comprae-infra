@@ -123,7 +123,27 @@ git --version
 $PSVersionTable.PSVersion
 ```
 
-## 🚀 Instalação
+## 🚀 Início Rápido
+
+### 🎯 Método Automático (Recomendado)
+
+Execute o script que configura todo o ecossistema:
+
+```powershell
+# Windows PowerShell
+.\iniciar-ecosistema.ps1
+```
+
+Este script irá:
+- ✅ Iniciar todos os serviços de infraestrutura
+- ✅ Configurar o Config Server
+- ✅ Popular configurações dos microserviços
+- ✅ Iniciar os microserviços integrados
+- ✅ Configurar monitoramento
+
+### ⚙️ Método Manual
+
+Para controle total sobre a inicialização:
 
 ### 1. Clone o Repositório
 

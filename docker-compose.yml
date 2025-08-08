@@ -232,10 +232,10 @@ services:
   comprae-produto-service:
     image: comprae/produto-service:latest
     container_name: comprae-produto-service
+    ports:
+      - "8082:8082"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_produtos
       - SPRING_DATASOURCE_USERNAME=comprae_user
       - SPRING_DATASOURCE_PASSWORD=comprae_pass
@@ -243,15 +243,20 @@ services:
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - ELASTICSEARCH_HOST=elasticsearch
       - ELASTICSEARCH_PORT=9200
+      # Configurações do Config Client SDK
+      - CONFIG_CLIENT_SERVER_URL=http://config-server:8888
+      - CONFIG_CLIENT_NAMESPACE=comprae-produto-service
+      - CONFIG_CLIENT_ENVIRONMENT=docker
+      - CONFIG_CLIENT_USERNAME=admin
+      - CONFIG_CLIENT_PASSWORD=admin123
+      - CONFIG_CLIENT_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
     networks:
       - comprae-network
     depends_on:
       - postgres
       - redis
       - kafka
-      - elasticsearch
       - config-server
-      - eureka-server
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
       interval: 30s
