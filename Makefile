@@ -16,7 +16,7 @@ start: ## Inicia todos os serviços
 	@echo "Acesse:"
 	@echo "  - API Gateway: http://localhost:8080"
 	@echo "  - Eureka: http://localhost:8761"
-	@echo "  - RabbitMQ Management: http://localhost:15672"
+	@echo "  - Kafka UI: http://localhost:8080"
 	@echo "  - Grafana: http://localhost:3000"
 	@echo "  - Kibana: http://localhost:5601"
 	@echo "  - Zipkin: http://localhost:9411"
@@ -49,9 +49,9 @@ dev: ## Inicia ambiente de desenvolvimento
 	@echo "Acesse:"
 	@echo "  - PostgreSQL: localhost:5433"
 	@echo "  - Redis: localhost:6380"
-	@echo "  - RabbitMQ Management: http://localhost:15673"
+	@echo "  - Kafka UI: http://localhost:8081"
 	@echo "  - Elasticsearch: http://localhost:9201"
-	@echo "  - Adminer: http://localhost:8081"
+	@echo "  - Adminer: http://localhost:8082"
 	@echo "  - MailHog: http://localhost:8025"
 
 prod: ## Inicia ambiente de produção

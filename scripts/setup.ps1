@@ -102,7 +102,7 @@ function New-RequiredDirectories {
         "logs",
         "volumes\postgres",
         "volumes\redis",
-        "volumes\rabbitmq",
+        "volumes\kafka",
         "volumes\elasticsearch",
         "volumes\grafana",
         "volumes\prometheus"
@@ -179,7 +179,8 @@ function Get-BaseImages {
     $images = @(
         "postgres:15-alpine",
         "redis:7-alpine",
-        "rabbitmq:3-management-alpine",
+        "confluentinc/cp-kafka:latest",
+        "confluentinc/cp-zookeeper:latest",
         "docker.elastic.co/elasticsearch/elasticsearch:8.11.0",
         "docker.elastic.co/kibana/kibana:8.11.0",
         "prom/prometheus:latest",
@@ -232,7 +233,7 @@ function Test-Environment {
     try {
         # Iniciar apenas os serviços de infraestrutura para teste
         Write-Log "Iniciando serviços de infraestrutura para teste..." "INFO"
-        docker-compose up -d postgres redis rabbitmq
+        docker-compose up -d postgres redis zookeeper kafka
         
         # Aguardar serviços ficarem prontos
         Write-Log "Aguardando serviços ficarem prontos..." "INFO"

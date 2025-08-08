@@ -14,7 +14,7 @@ SERVICES=(
     "notification-service:8085:/actuator/health"
     "postgres:5432"
     "redis:6379"
-    "rabbitmq:15672:/api/overview"
+    "kafka:9092"
     "elasticsearch:9200:/_cluster/health"
     "grafana:3000:/api/health"
     "prometheus:9090:/-/healthy"

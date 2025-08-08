@@ -88,7 +88,7 @@ create_directories() {
         "$PROJECT_ROOT/logs"
         "$PROJECT_ROOT/volumes/postgres"
         "$PROJECT_ROOT/volumes/redis"
-        "$PROJECT_ROOT/volumes/rabbitmq"
+        "$PROJECT_ROOT/volumes/kafka"
         "$PROJECT_ROOT/volumes/elasticsearch"
         "$PROJECT_ROOT/volumes/grafana"
         "$PROJECT_ROOT/volumes/prometheus"
@@ -148,7 +148,8 @@ pull_base_images() {
     images=(
         "postgres:15-alpine"
         "redis:7-alpine"
-        "rabbitmq:3-management-alpine"
+        "confluentinc/cp-kafka:latest"
+        "confluentinc/cp-zookeeper:latest"
         "docker.elastic.co/elasticsearch/elasticsearch:8.11.0"
         "docker.elastic.co/kibana/kibana:8.11.0"
         "prom/prometheus:latest"
@@ -195,7 +196,7 @@ test_environment() {
     
     # Iniciar apenas os serviços de infraestrutura para teste
     log_info "Iniciando serviços de infraestrutura para teste..."
-    docker-compose up -d postgres redis rabbitmq
+    docker-compose up -d postgres redis zookeeper kafka
     
     # Aguardar serviços ficarem prontos
     log_info "Aguardando serviços ficarem prontos..."

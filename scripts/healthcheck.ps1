@@ -17,7 +17,7 @@ $Services = @(
     @{Name="notification-service"; Port=8085; Endpoint="/actuator/health"},
     @{Name="postgres"; Port=5432; Endpoint=""},
     @{Name="redis"; Port=6379; Endpoint=""},
-    @{Name="rabbitmq"; Port=15672; Endpoint="/api/overview"},
+    @{Name="kafka"; Port=9092; Endpoint=""},
     @{Name="elasticsearch"; Port=9200; Endpoint="/_cluster/health"},
     @{Name="grafana"; Port=3000; Endpoint="/api/health"},
     @{Name="prometheus"; Port=9090; Endpoint="/-/healthy"},

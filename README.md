@@ -55,7 +55,8 @@ graph TB
     end
     
     subgraph "Messaging"
-        RABBITMQ[RabbitMQ :5672]
+        KAFKA[Apache Kafka :9092]
+        KAFKA_UI[Kafka UI :8090]
     end
     
     subgraph "Monitoring"
@@ -85,11 +86,11 @@ graph TB
     ORDER --> REDIS
     PAYMENT --> REDIS
     
-    USER --> RABBITMQ
-    PRODUCT --> RABBITMQ
-    ORDER --> RABBITMQ
-    PAYMENT --> RABBITMQ
-    NOTIFICATION --> RABBITMQ
+    USER --> KAFKA
+    PRODUCT --> KAFKA
+    ORDER --> KAFKA
+    PAYMENT --> KAFKA
+    NOTIFICATION --> KAFKA
     
     EUREKA --> CONFIG
     LB --> EUREKA
@@ -285,7 +286,7 @@ docker-compose down
 
 - **Sistema Geral**: Visão overview de todos os serviços
 - **Microserviços**: Métricas específicas de cada serviço
-- **Infraestrutura**: PostgreSQL, Redis, RabbitMQ
+- **Infraestrutura**: PostgreSQL, Redis, Apache Kafka
 - **JVM**: Métricas da JVM dos serviços Spring Boot
 
 ### Health Checks
