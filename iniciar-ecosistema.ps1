@@ -24,8 +24,7 @@ function Test-Service {
                 Write-Host "✓ $ServiceName está disponível!" -ForegroundColor Green
                 return $true
             }
-        }
-        catch {
+        } catch {
             # Serviço ainda não está disponível
         }
         
@@ -50,13 +49,7 @@ Write-Host ""
 Write-Host "📦 Iniciando serviços de infraestrutura..." -ForegroundColor Blue
 docker-compose up -d postgres redis zookeeper kafka kafka-ui
 
-# 2. Aguardar serviços base estarem prontos
-if (-not (Test-Service -Url "http://localhost:9200/_cluster/health" -ServiceName "Elasticsearch")) {
-    Write-Host "Iniciando Elasticsearch..." -ForegroundColor Yellow
-    docker-compose up -d elasticsearch
-}
-
-# 3. Iniciar Config Server
+# 2. Iniciar Config Server
 Write-Host "🔧 Iniciando Config Server..." -ForegroundColor Blue
 docker-compose up -d config-server
 
@@ -65,21 +58,20 @@ if (-not (Test-Service -Url "http://localhost:8888/actuator/health" -ServiceName
     exit 1
 }
 
-# 4. Popular configurações do produto service
+# 3. Popular configurações do produto service
 Write-Host "📋 Configurando Produto Service..." -ForegroundColor Blue
 if (Test-Path "../comprae-produto-service/scripts/popular-configuracoes.ps1") {
     Set-Location "../comprae-produto-service"
     try {
         & "./scripts/popular-configuracoes.ps1"
         Write-Host "✓ Configurações do Produto Service populadas" -ForegroundColor Green
-    }
-    catch {
+    } catch {
         Write-Host "⚠️ Erro ao popular configurações do Produto Service" -ForegroundColor Yellow
     }
     Set-Location "../comprae-infra"
 }
 
-# 5. Iniciar microserviços
+# 4. Iniciar microserviços
 Write-Host "🚀 Iniciando microserviços..." -ForegroundColor Blue
 docker-compose up -d comprae-produto-service
 
@@ -88,7 +80,7 @@ if (Test-Service -Url "http://localhost:8082/actuator/health" -ServiceName "Prod
     Write-Host "✓ Produto Service iniciado com sucesso!" -ForegroundColor Green
 }
 
-# 6. Iniciar monitoramento
+# 5. Iniciar monitoramento
 Write-Host "📊 Iniciando serviços de monitoramento..." -ForegroundColor Blue
 docker-compose up -d prometheus grafana
 
@@ -100,7 +92,6 @@ Write-Host ""
 Write-Host "🔧 Infraestrutura:" -ForegroundColor Yellow
 Write-Host "• Config Server: http://localhost:8888" -ForegroundColor Cyan
 Write-Host "• Kafka UI: http://localhost:8090" -ForegroundColor Cyan
-Write-Host "• Elasticsearch: http://localhost:9200" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "🛍️ Microserviços:" -ForegroundColor Yellow
 Write-Host "• Produto Service API: http://localhost:8082/api/v1/produtos" -ForegroundColor Cyan
