@@ -8,43 +8,8 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: comprae-postgres
-    environment:
-      POSTGRES_DB: comprae
-      POSTGRES_USER: comprae_user
-      POSTGRES_PASSWORD: comprae_pass
-      POSTGRES_MULTIPLE_DATABASES: comprae_usuarios,comprae_produtos,comprae_categorias,comprae_estoque,comprae_pedidos,comprae_pagamentos,comprae_entregas,comprae_avaliacoes
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
-    networks:
-      - comprae-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U comprae_user -d comprae"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
   # Redis Cache
   redis:
-    image: redis:7-alpine
-    container_name: comprae-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - comprae-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Apache Kafka Message Broker
-  zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     container_name: comprae-zookeeper
     environment:
@@ -63,8 +28,6 @@ services:
     container_name: comprae-kafka
     depends_on:
       - zookeeper
-    ports:
-      - "9092:9092"
       - "9094:9094"
     environment:
       KAFKA_BROKER_ID: 1
@@ -75,7 +38,7 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     volumes:
       - kafka_data:/var/lib/kafka/data
     networks:
@@ -98,8 +61,6 @@ services:
       KAFKA_CLUSTERS_0_NAME: comprae-cluster
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-    networks:
-      - comprae-network
 
   # Elasticsearch for logging and search
   elasticsearch:
@@ -127,8 +88,6 @@ services:
     image: docker.elastic.co/kibana/kibana:8.11.0
     container_name: comprae-kibana
     environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    ports:
       - "5601:5601"
     networks:
       - comprae-network
@@ -156,8 +115,6 @@ services:
     networks:
       - comprae-network
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8888/actuator/health || exit 1"]
-      interval: 30s
       timeout: 10s
       retries: 3
 
@@ -182,8 +139,6 @@ services:
 
   # Gateway da API
   api-gateway:
-    image: comprae/api-gateway:latest
-    container_name: comprae-gateway
     ports:
       - "8080:8080"
     environment:
@@ -210,8 +165,6 @@ services:
       - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_usuarios
-      - SPRING_DATASOURCE_USERNAME=comprae_user
-      - SPRING_DATASOURCE_PASSWORD=comprae_pass
       - SPRING_REDIS_HOST=redis
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
     networks:
@@ -239,8 +192,6 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_produtos
       - SPRING_DATASOURCE_USERNAME=comprae_user
       - SPRING_DATASOURCE_PASSWORD=comprae_pass
-      - SPRING_REDIS_HOST=redis
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - ELASTICSEARCH_HOST=elasticsearch
       - ELASTICSEARCH_PORT=9200
       # Configurações do Config Client SDK
@@ -268,8 +219,6 @@ services:
     image: comprae/categoria-service:latest
     container_name: comprae-categoria-service
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_categorias
       - SPRING_DATASOURCE_USERNAME=comprae_user
@@ -294,8 +243,6 @@ services:
   comprae-estoque-service:
     image: comprae/estoque-service:latest
     container_name: comprae-estoque-service
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
       - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_estoque
@@ -322,8 +269,6 @@ services:
     image: comprae/carrinho-service:latest
     container_name: comprae-carrinho-service
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
       - SPRING_REDIS_HOST=redis
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
@@ -339,7 +284,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
   # Serviço de Pedidos
   comprae-pedido-service:
     image: comprae/pedido-service:latest
