@@ -1,0 +1,530 @@
+version: '3.8'
+
+services:
+  # ===================
+  # INFRAESTRUTURA BASE
+  # ===================
+  
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: comprae-postgres
+    environment:
+      POSTGRES_DB: comprae
+      POSTGRES_USER: comprae_user
+      POSTGRES_PASSWORD: comprae_pass
+      POSTGRES_MULTIPLE_DATABASES: comprae_usuarios,comprae_produtos,comprae_categorias,comprae_estoque,comprae_pedidos,comprae_pagamentos,comprae_entregas,comprae_avaliacoes
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
+    networks:
+      - comprae-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U comprae_user -d comprae"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: comprae-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - comprae-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Apache Kafka Message Broker
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: comprae-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    networks:
+      - comprae-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: comprae-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - comprae-network
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Kafka UI para gerenciamento
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: comprae-kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: comprae-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - comprae-network
+
+  # Elasticsearch for logging and search
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: comprae-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - comprae-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Kibana for log visualization
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: comprae-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    networks:
+      - comprae-network
+    depends_on:
+      - elasticsearch
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===================
+  # MICROSERVIÇOS E-COMMERCE
+  # ===================
+
+  # Servidor de Configuração
+  config-server:
+    image: comprae/config-server:latest
+    container_name: comprae-config-server
+    ports:
+      - "8888:8888"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CLOUD_CONFIG_SERVER_GIT_URI=https://github.com/JonatasSilvaDev/comprae-config-repo
+    networks:
+      - comprae-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8888/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Descoberta de Serviços (Eureka)
+  eureka-server:
+    image: comprae/eureka-server:latest
+    container_name: comprae-eureka
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+    networks:
+      - comprae-network
+    depends_on:
+      - config-server
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8761/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Gateway da API
+  api-gateway:
+    image: comprae/api-gateway:latest
+    container_name: comprae-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
+    networks:
+      - comprae-network
+    depends_on:
+      - config-server
+      - eureka-server
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Serviço de Usuários
+  comprae-usuario-service:
+    image: comprae/usuario-service:latest
+    container_name: comprae-usuario-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_usuarios
+      - SPRING_DATASOURCE_USERNAME=comprae_user
+      - SPRING_DATASOURCE_PASSWORD=comprae_pass
+      - SPRING_REDIS_HOST=redis
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    networks:
+      - comprae-network
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - config-server
+      - eureka-server
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Serviço de Produtos
+  comprae-produto-service:
+    image: comprae/produto-service:latest
+    container_name: comprae-produto-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_produtos
+      - SPRING_DATASOURCE_USERNAME=comprae_user
+      - SPRING_DATASOURCE_PASSWORD=comprae_pass
+      - SPRING_REDIS_HOST=redis
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+    networks:
+      - comprae-network
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - elasticsearch
+      - config-server
+      - eureka-server
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Serviço de Categorias
+  comprae-categoria-service:
+    image: comprae/categoria-service:latest
+    container_name: comprae-categoria-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_categorias
+      - SPRING_DATASOURCE_USERNAME=comprae_user
+      - SPRING_DATASOURCE_PASSWORD=comprae_pass
+      - SPRING_REDIS_HOST=redis
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    networks:
+      - comprae-network
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - config-server
+      - eureka-server
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8083/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Serviço de Estoque
+  comprae-estoque-service:
+    image: comprae/estoque-service:latest
+    container_name: comprae-estoque-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_estoque
+      - SPRING_DATASOURCE_USERNAME=comprae_user
+      - SPRING_DATASOURCE_PASSWORD=comprae_pass
+      - SPRING_REDIS_HOST=redis
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    networks:
+      - comprae-network
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - config-server
+      - eureka-server
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8084/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Serviço de Carrinho
+  comprae-carrinho-service:
+    image: comprae/carrinho-service:latest
+    container_name: comprae-carrinho-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - SPRING_REDIS_HOST=redis
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    networks:
+      - comprae-network
+    depends_on:
+      - redis
+      - kafka
+      - config-server
+      - eureka-server
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8085/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Serviço de Pedidos
+  comprae-pedido-service:
+    image: comprae/pedido-service:latest
+    container_name: comprae-pedido-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_pedidos
+      - SPRING_DATASOURCE_USERNAME=comprae_user
+      - SPRING_DATASOURCE_PASSWORD=comprae_pass
+      - SPRING_REDIS_HOST=redis
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    networks:
+      - comprae-network
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - config-server
+      - eureka-server
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8086/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Serviço de Pagamentos
+  comprae-pagamento-service:
+    image: comprae/pagamento-service:latest
+    container_name: comprae-pagamento-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_pagamentos
+      - SPRING_DATASOURCE_USERNAME=comprae_user
+      - SPRING_DATASOURCE_PASSWORD=comprae_pass
+      - SPRING_REDIS_HOST=redis
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    networks:
+      - comprae-network
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - config-server
+      - eureka-server
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8087/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Serviço de Entrega
+  comprae-entrega-service:
+    image: comprae/entrega-service:latest
+    container_name: comprae-entrega-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_entregas
+      - SPRING_DATASOURCE_USERNAME=comprae_user
+      - SPRING_DATASOURCE_PASSWORD=comprae_pass
+      - SPRING_REDIS_HOST=redis
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    networks:
+      - comprae-network
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - config-server
+      - eureka-server
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8088/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Serviço de Notificações
+  comprae-notificacao-service:
+    image: comprae/notificacao-service:latest
+    container_name: comprae-notificacao-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - SPRING_REDIS_HOST=redis
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    networks:
+      - comprae-network
+    depends_on:
+      - redis
+      - kafka
+      - config-server
+      - eureka-server
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8089/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Serviço de Avaliações
+  comprae-avaliacao-service:
+    image: comprae/avaliacao-service:latest
+    container_name: comprae-avaliacao-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_avaliacoes
+      - SPRING_DATASOURCE_USERNAME=comprae_user
+      - SPRING_DATASOURCE_PASSWORD=comprae_pass
+      - SPRING_REDIS_HOST=redis
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    networks:
+      - comprae-network
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - config-server
+      - eureka-server
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8091/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===================
+  # MONITORAMENTO
+  # ===================
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: comprae-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - comprae-network
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: comprae-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - comprae-network
+    depends_on:
+      - prometheus
+
+  # Zipkin for distributed tracing
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: comprae-zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - comprae-network
+
+networks:
+  comprae-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  zookeeper_data:
+  zookeeper_logs:
+  kafka_data:
+  elasticsearch_data:
+  prometheus_data:
+  grafana_data:

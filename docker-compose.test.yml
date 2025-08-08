@@ -1,0 +1,143 @@
+version: '3.8'
+
+# Docker Compose para testes e CI/CD
+# Versão minimalista focada em testes automatizados
+
+services:
+  # ===================
+  # INFRAESTRUTURA TESTE
+  # ===================
+  
+  # PostgreSQL para testes
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: comprae-postgres-test
+    environment:
+      POSTGRES_DB: comprae_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pass
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./scripts/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
+    networks:
+      - comprae-test-network
+    tmpfs:
+      - /var/lib/postgresql/data  # Em memória para performance
+
+  # Redis para testes
+  redis-test:
+    image: redis:7-alpine
+    container_name: comprae-redis-test
+    ports:
+      - "6381:6379"
+    networks:
+      - comprae-test-network
+    tmpfs:
+      - /data  # Em memória para performance
+
+  # RabbitMQ para testes
+  rabbitmq-test:
+    image: rabbitmq:3-alpine
+    container_name: comprae-rabbitmq-test
+    environment:
+      RABBITMQ_DEFAULT_USER: test
+      RABBITMQ_DEFAULT_PASS: test123
+    ports:
+      - "5674:5672"
+    networks:
+      - comprae-test-network
+
+  # ===================
+  # SERVIÇOS PARA TESTE
+  # ===================
+
+  # Config Server
+  config-server-test:
+    image: comprae/config-server:test
+    container_name: comprae-config-server-test
+    ports:
+      - "8889:8888"
+    environment:
+      - SPRING_PROFILES_ACTIVE=test
+      - SPRING_CLOUD_CONFIG_SERVER_GIT_URI=https://github.com/JonatasSilvaDev/comprae-config-repo
+    networks:
+      - comprae-test-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8888/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Eureka Server para testes
+  eureka-server-test:
+    image: comprae/eureka-server:test
+    container_name: comprae-eureka-test
+    ports:
+      - "8762:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=test
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server-test:8888
+    networks:
+      - comprae-test-network
+    depends_on:
+      - config-server-test
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8761/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # User Service para testes
+  user-service-test:
+    image: comprae/user-service:test
+    container_name: comprae-user-service-test
+    environment:
+      - SPRING_PROFILES_ACTIVE=test
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server-test:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server-test:8761/eureka
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-test:5432/comprae_users_test
+      - SPRING_DATASOURCE_USERNAME=test_user
+      - SPRING_DATASOURCE_PASSWORD=test_pass
+      - SPRING_REDIS_HOST=redis-test
+      - SPRING_RABBITMQ_HOST=rabbitmq-test
+      - SPRING_RABBITMQ_USERNAME=test
+      - SPRING_RABBITMQ_PASSWORD=test123
+    networks:
+      - comprae-test-network
+    depends_on:
+      - postgres-test
+      - redis-test
+      - rabbitmq-test
+      - config-server-test
+      - eureka-server-test
+
+  # Product Service para testes
+  product-service-test:
+    image: comprae/product-service:test
+    container_name: comprae-product-service-test
+    environment:
+      - SPRING_PROFILES_ACTIVE=test
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server-test:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server-test:8761/eureka
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-test:5432/comprae_products_test
+      - SPRING_DATASOURCE_USERNAME=test_user
+      - SPRING_DATASOURCE_PASSWORD=test_pass
+      - SPRING_REDIS_HOST=redis-test
+      - SPRING_RABBITMQ_HOST=rabbitmq-test
+      - SPRING_RABBITMQ_USERNAME=test
+      - SPRING_RABBITMQ_PASSWORD=test123
+    networks:
+      - comprae-test-network
+    depends_on:
+      - postgres-test
+      - redis-test
+      - rabbitmq-test
+      - config-server-test
+      - eureka-server-test
+
+networks:
+  comprae-test-network:
+    driver: bridge
+
+# Nota: Volumes não são criados para testes - dados em memória para performance

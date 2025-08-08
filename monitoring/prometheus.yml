@@ -1,0 +1,125 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Servidor de Configuração
+  - job_name: 'config-server'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['config-server:8888']
+    scrape_interval: 30s
+
+  # Servidor Eureka
+  - job_name: 'eureka-server'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['eureka-server:8761']
+    scrape_interval: 30s
+
+  # Gateway da API
+  - job_name: 'api-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['api-gateway:8080']
+    scrape_interval: 30s
+
+  # Serviço de Usuários
+  - job_name: 'usuario-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['comprae-usuario-service:8081']
+    scrape_interval: 30s
+
+  # Serviço de Produtos
+  - job_name: 'produto-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['comprae-produto-service:8082']
+    scrape_interval: 30s
+
+  # Serviço de Categorias
+  - job_name: 'categoria-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['comprae-categoria-service:8083']
+    scrape_interval: 30s
+
+  # Serviço de Estoque
+  - job_name: 'estoque-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['comprae-estoque-service:8084']
+    scrape_interval: 30s
+
+  # Serviço de Carrinho
+  - job_name: 'carrinho-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['comprae-carrinho-service:8085']
+    scrape_interval: 30s
+
+  # Serviço de Pedidos
+  - job_name: 'pedido-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['comprae-pedido-service:8086']
+    scrape_interval: 30s
+
+  # Serviço de Pagamentos
+  - job_name: 'pagamento-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['comprae-pagamento-service:8087']
+    scrape_interval: 30s
+
+  # Serviço de Entregas
+  - job_name: 'entrega-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['comprae-entrega-service:8088']
+    scrape_interval: 30s
+
+  # Serviço de Notificações
+  - job_name: 'notificacao-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['comprae-notificacao-service:8089']
+    scrape_interval: 30s
+
+  # Serviço de Avaliações
+  - job_name: 'avaliacao-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['comprae-avaliacao-service:8091']
+    scrape_interval: 30s
+
+  # Serviços de Infraestrutura
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 60s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 60s
+
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka:9092']
+    scrape_interval: 60s
+
+  - job_name: 'elasticsearch'
+    static_configs:
+      - targets: ['elasticsearch:9200']
+    scrape_interval: 60s
