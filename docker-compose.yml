@@ -166,8 +166,8 @@ services:
   #   environment:
   #     - SPRING_PROFILES_ACTIVE=docker
   #     - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_produtos
-  #     - SPRING_DATASOURCE_USERNAME=comprae_user
-  #     - SPRING_DATASOURCE_PASSWORD=comprae_pass
+  #     - SPRING_DATASOURCE_USERNAME=${COMPRAE_USER}
+  #     - SPRING_DATASOURCE_PASSWORD=${COMPRAE_PASS}
   #     - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
   #     - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
   #   networks:
@@ -213,7 +213,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_SECURITY_ADMIN_PASSWORD=${COMPRAE_PASS}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards

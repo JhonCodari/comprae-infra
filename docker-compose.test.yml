@@ -14,8 +14,8 @@ services:
     container_name: comprae-postgres-test
     environment:
       POSTGRES_DB: comprae_test
-      POSTGRES_USER: test_user
-      POSTGRES_PASSWORD: test_pass
+      POSTGRES_USER: ${COMPRAE_USER}
+      POSTGRES_PASSWORD: ${COMPRAE_PASS}
     ports:
       - "5434:5432"
     volumes:
@@ -113,8 +113,8 @@ services:
       - SPRING_CONFIG_IMPORT=configserver:http://config-server-test:8888
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server-test:8761/eureka
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-test:5432/comprae_users_test
-      - SPRING_DATASOURCE_USERNAME=test_user
-      - SPRING_DATASOURCE_PASSWORD=test_pass
+      - SPRING_DATASOURCE_USERNAME=${COMPRAE_USER}
+      - SPRING_DATASOURCE_PASSWORD=${COMPRAE_PASS}
       - SPRING_REDIS_HOST=redis-test
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka-test:29092
     networks:
@@ -135,8 +135,8 @@ services:
       - SPRING_CONFIG_IMPORT=configserver:http://config-server-test:8888
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server-test:8761/eureka
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-test:5432/comprae_products_test
-      - SPRING_DATASOURCE_USERNAME=test_user
-      - SPRING_DATASOURCE_PASSWORD=test_pass
+      - SPRING_DATASOURCE_USERNAME=${COMPRAE_USER}
+      - SPRING_DATASOURCE_PASSWORD=${COMPRAE_PASS}
       - SPRING_REDIS_HOST=redis-test
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka-test:9092
     networks:

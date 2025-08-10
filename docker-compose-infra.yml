@@ -9,8 +9,8 @@ services:
     container_name: comprae-postgres
     environment:
       POSTGRES_DB: comprae
-      POSTGRES_USER: comprae_user
-      POSTGRES_PASSWORD: comprae_pass
+      POSTGRES_USER: ${COMPRAE_USER}
+      POSTGRES_PASSWORD: ${COMPRAE_PASS}
       POSTGRES_MULTIPLE_DATABASES: comprae_usuarios,comprae_produtos,comprae_categorias,comprae_estoque,comprae_pedidos,comprae_pagamentos,comprae_entregas,comprae_avaliacoes
     ports:
       - "5432:5432"
@@ -167,7 +167,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_SECURITY_ADMIN_PASSWORD=${COMPRAE_PASS}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards

@@ -11,8 +11,8 @@ services:
     container_name: comprae-postgres-dev
     environment:
       POSTGRES_DB: comprae_dev
-      POSTGRES_USER: dev_user
-      POSTGRES_PASSWORD: dev_pass
+      POSTGRES_USER: ${COMPRAE_USER}
+      POSTGRES_PASSWORD: ${COMPRAE_PASS}
       POSTGRES_MULTIPLE_DATABASES: comprae_usuarios_dev,comprae_produtos_dev,comprae_categorias_dev,comprae_estoque_dev,comprae_pedidos_dev,comprae_pagamentos_dev,comprae_entregas_dev,comprae_avaliacoes_dev
     ports:
       - "5433:5432"  # Porta diferente para não conflitar
