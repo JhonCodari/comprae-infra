@@ -1,4 +1,4 @@
-# Iniciar Sistema Comprae - Completo
+# Script para inicializar o Ecossistema Comprae completo
 param(
     [switch]$Build,
     [switch]$Logs,
@@ -6,7 +6,7 @@ param(
 )
 
 Write-Host "=====================================" -ForegroundColor Cyan
-Write-Host "     Sistema E-Commerce Comprae     " -ForegroundColor Cyan
+Write-Host "     Comprae Docker Ecosystem       " -ForegroundColor Cyan
 Write-Host "=====================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -25,46 +25,32 @@ function Test-DockerRunning {
 Write-Host "Verificando Docker..." -ForegroundColor Yellow
 if (-not (Test-DockerRunning)) {
     Write-Host "Docker nao esta em execucao!" -ForegroundColor Red
-    Write-Host "Iniciando Docker Desktop..." -ForegroundColor Blue
-    
-    $dockerPath = "${env:ProgramFiles}\Docker\Docker\Docker Desktop.exe"
-    if (Test-Path $dockerPath) {
-        Start-Process $dockerPath
-        Write-Host "Aguardando Docker inicializar (30 segundos)..." -ForegroundColor Yellow
-        Start-Sleep 30
-        
-        if (-not (Test-DockerRunning)) {
-            Write-Host "Nao foi possivel iniciar o Docker automaticamente!" -ForegroundColor Red
-            Write-Host "Inicie o Docker Desktop manualmente e execute este script novamente." -ForegroundColor Yellow
-            exit 1
-        }
-    } else {
-        Write-Host "Docker Desktop nao encontrado!" -ForegroundColor Red
-        Write-Host "Instale o Docker Desktop e execute novamente." -ForegroundColor Yellow
-        exit 1
-    }
+    exit 1
 }
 Write-Host "Docker esta rodando!" -ForegroundColor Green
 
-# Validar configuracao
-Write-Host "Validando configuracao..." -ForegroundColor Yellow
-try {
-    docker-compose config --quiet
-    Write-Host "Configuracao valida!" -ForegroundColor Green
-}
-catch {
-    Write-Host "Erro na configuracao do docker-compose.yml!" -ForegroundColor Red
-    Write-Host "Erro: $($_.Exception.Message)" -ForegroundColor Red
+# Verificar se as imagens existem
+Write-Host "Verificando imagens Docker..." -ForegroundColor Yellow
+$configImage = docker images -q comprae/config-server:latest
+$produtoImage = docker images -q comprae/produto-service:latest
+
+if (-not $configImage) {
+    Write-Host "Imagem comprae/config-server:latest nao encontrada!" -ForegroundColor Red
+    Write-Host "Execute: docker build -t comprae/config-server:latest . no diretorio comprae-config-server/config-server" -ForegroundColor Yellow
     exit 1
 }
+
+if (-not $produtoImage) {
+    Write-Host "Imagem comprae/produto-service:latest nao encontrada!" -ForegroundColor Red
+    Write-Host "Execute: docker build -t comprae/produto-service:latest . no diretorio comprae-produto-service-new" -ForegroundColor Yellow
+    exit 1
+}
+
+Write-Host "Todas as imagens estao disponíveis!" -ForegroundColor Green
 
 # Parar containers existentes
 Write-Host "Parando containers existentes..." -ForegroundColor Yellow
 docker-compose down
-
-# Limpar containers orfaos
-Write-Host "Limpando containers orfaos..." -ForegroundColor Yellow
-docker-compose down --remove-orphans
 
 # Comando base
 $dockerCmd = "docker-compose up"
@@ -79,42 +65,60 @@ if ($Background) {
     $dockerCmd += " -d"
 }
 
-# Iniciar servicos
-Write-Host ""
-Write-Host "Iniciando Sistema Comprae..." -ForegroundColor Green
-Write-Host "Comando: $dockerCmd" -ForegroundColor Gray
-Write-Host ""
-
 # Mostrar informacoes dos servicos
+Write-Host ""
 Write-Host "Servicos que serao iniciados:" -ForegroundColor Cyan
 Write-Host "   PostgreSQL        : localhost:5432" -ForegroundColor White
 Write-Host "   Redis             : localhost:6379" -ForegroundColor White
-Write-Host "   Zookeeper         : localhost:2181" -ForegroundColor White
 Write-Host "   Kafka             : localhost:9092" -ForegroundColor White
 Write-Host "   Config Server     : localhost:8888" -ForegroundColor White
 Write-Host "   Produto Service   : localhost:8082" -ForegroundColor White
-Write-Host "   Prometheus        : localhost:9090" -ForegroundColor White
-Write-Host "   Grafana           : localhost:3000" -ForegroundColor White
 Write-Host "   Elasticsearch     : localhost:9200" -ForegroundColor White
 Write-Host "   Kibana            : localhost:5601" -ForegroundColor White
+Write-Host "   Grafana           : localhost:3000 (admin/admin123)" -ForegroundColor White
+Write-Host "   Prometheus        : localhost:9090" -ForegroundColor White
 Write-Host "   Kafka UI          : localhost:8090" -ForegroundColor White
 Write-Host "   Zipkin            : localhost:9411" -ForegroundColor White
 Write-Host ""
 
 # Executar comando
+Write-Host "Iniciando Ecossistema Comprae..." -ForegroundColor Green
+Write-Host "Comando: $dockerCmd" -ForegroundColor Gray
+Write-Host ""
+
 try {
     Invoke-Expression $dockerCmd
     
     if ($Background) {
         Write-Host ""
         Write-Host "Sistema iniciado em background!" -ForegroundColor Green
-        Write-Host "Para ver logs: docker-compose logs -f" -ForegroundColor Yellow
-        Write-Host "Para parar: docker-compose down" -ForegroundColor Yellow
         
-        Start-Sleep 10
+        # Aguardar os servicos iniciarem
+        Write-Host "Aguardando servicos iniciarem..." -ForegroundColor Yellow
+        Start-Sleep 30
+        
         Write-Host ""
         Write-Host "Status dos containers:" -ForegroundColor Cyan
         docker-compose ps
+        
+        Write-Host ""
+        Write-Host "Testando endpoints:" -ForegroundColor Cyan
+        
+        # Testar Config Server
+        try {
+            $response = Invoke-WebRequest -Uri "http://localhost:8888/actuator/health" -TimeoutSec 5
+            Write-Host "   Config Server: ONLINE" -ForegroundColor Green
+        } catch {
+            Write-Host "   Config Server: OFFLINE" -ForegroundColor Red
+        }
+        
+        # Testar Produto Service
+        try {
+            $response = Invoke-WebRequest -Uri "http://localhost:8082/api/produtos/health" -TimeoutSec 5
+            Write-Host "   Produto Service: ONLINE" -ForegroundColor Green
+        } catch {
+            Write-Host "   Produto Service: OFFLINE" -ForegroundColor Red
+        }
     }
 }
 catch {
@@ -130,7 +134,13 @@ if ($Logs) {
 }
 
 Write-Host ""
-Write-Host "Sistema Comprae inicializado com sucesso!" -ForegroundColor Green
+Write-Host "Ecossistema Comprae inicializado com sucesso!" -ForegroundColor Green
+Write-Host ""
+Write-Host "Endpoints para teste:" -ForegroundColor Cyan
+Write-Host "   Config Server     : http://localhost:8888/actuator/health" -ForegroundColor White
+Write-Host "   Produto Health    : http://localhost:8082/api/produtos/health" -ForegroundColor White
+Write-Host "   Produto API       : http://localhost:8082/api/produtos" -ForegroundColor White
+Write-Host "   Spring Actuator   : http://localhost:8082/actuator/health" -ForegroundColor White
 Write-Host ""
 Write-Host "Comandos uteis:" -ForegroundColor Cyan
 Write-Host "   Ver status: docker-compose ps" -ForegroundColor White

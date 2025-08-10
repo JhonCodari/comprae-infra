@@ -95,6 +95,8 @@ services:
       KAFKA_CLUSTERS_0_NAME: comprae-cluster
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - comprae-network
 
   # Elasticsearch for logging and search
   elasticsearch:
@@ -134,54 +136,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  # ===================
-  # MICROSERVIÇOS E-COMMERCE
-  # ===================
-
-  # Servidor de Configuração
-  config-server:
-    image: comprae/config-server:latest
-    container_name: comprae-config-server
-    ports:
-      - "8888:8888"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CLOUD_CONFIG_SERVER_GIT_URI=https://github.com/JonatasSilvaDev/comprae-config-repo
-    networks:
-      - comprae-network
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8888/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-
-  # Serviço de Produtos
-  # comprae-produto-service:
-  #   image: comprae/produto-service:latest
-  #   container_name: comprae-produto-service
-  #   ports:
-  #     - "8082:8082"
-  #   environment:
-  #     - SPRING_PROFILES_ACTIVE=docker
-  #     - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_produtos
-  #     - SPRING_DATASOURCE_USERNAME=comprae_user
-  #     - SPRING_DATASOURCE_PASSWORD=comprae_pass
-  #     - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
-  #     - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-  #   networks:
-  #     - comprae-network
-  #   depends_on:
-  #     - postgres
-  #     - redis
-  #     - kafka
-  #     - config-server
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8082/actuator/health || exit 1"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
 
   # ===================
   # MONITORAMENTO

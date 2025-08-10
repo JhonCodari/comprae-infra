@@ -69,10 +69,7 @@ function Show-ServiceHealthStatus {
     
     $services = @(
         @{ Name = "Config Server"; Url = "http://localhost:8888/actuator/health" },
-        @{ Name = "Eureka Server"; Url = "http://localhost:8761/actuator/health" },
-        @{ Name = "API Gateway"; Url = "http://localhost:8080/actuator/health" },
         @{ Name = "Produto Service"; Url = "http://localhost:8082/actuator/health" },
-        @{ Name = "Usuário Service"; Url = "http://localhost:8081/actuator/health" },
         @{ Name = "PostgreSQL"; Url = "http://localhost:5432" }, # TCP check
         @{ Name = "Redis"; Url = "http://localhost:6379" }, # TCP check
         @{ Name = "Kafka"; Url = "http://localhost:9092" }, # TCP check

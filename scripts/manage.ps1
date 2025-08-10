@@ -42,8 +42,8 @@ function Start-Services {
         Write-Host "✅ Serviços iniciados com sucesso!" -ForegroundColor Green
         Write-Host ""
         Write-Host "Acesse os serviços em:" -ForegroundColor Cyan
-        Write-Host "  - API Gateway: http://localhost:8080" -ForegroundColor White
-        Write-Host "  - Eureka: http://localhost:8761" -ForegroundColor White
+        Write-Host "  - Config Server: http://localhost:8888" -ForegroundColor White
+        Write-Host "  - Produto Service: http://localhost:8082" -ForegroundColor White
         Write-Host "  - Kafka UI: http://localhost:8090" -ForegroundColor White
         Write-Host "  - Grafana: http://localhost:3000 (admin/admin123)" -ForegroundColor White
         Write-Host "  - Kibana: http://localhost:5601" -ForegroundColor White
@@ -136,18 +136,7 @@ function Build-Images {
     
     $services = @(
         @{Name="Config Server"; Path="../comprae-config-server"; Image="comprae/config-server:latest"},
-        @{Name="Eureka Server"; Path="../comprae-eureka-server"; Image="comprae/eureka-server:latest"},
-        @{Name="API Gateway"; Path="../comprae-api-gateway"; Image="comprae/api-gateway:latest"},
-        @{Name="Usuário Service"; Path="../comprae-usuario-service"; Image="comprae/usuario-service:latest"},
-        @{Name="Produto Service"; Path="../comprae-produto-service"; Image="comprae/produto-service:latest"},
-        @{Name="Categoria Service"; Path="../comprae-categoria-service"; Image="comprae/categoria-service:latest"},
-        @{Name="Estoque Service"; Path="../comprae-estoque-service"; Image="comprae/estoque-service:latest"},
-        @{Name="Carrinho Service"; Path="../comprae-carrinho-service"; Image="comprae/carrinho-service:latest"},
-        @{Name="Pedido Service"; Path="../comprae-pedido-service"; Image="comprae/pedido-service:latest"},
-        @{Name="Pagamento Service"; Path="../comprae-pagamento-service"; Image="comprae/pagamento-service:latest"},
-        @{Name="Entrega Service"; Path="../comprae-entrega-service"; Image="comprae/entrega-service:latest"},
-        @{Name="Notificação Service"; Path="../comprae-notificacao-service"; Image="comprae/notificacao-service:latest"},
-        @{Name="Avaliação Service"; Path="../comprae-avaliacao-service"; Image="comprae/avaliacao-service:latest"}
+        @{Name="Produto Service"; Path="../comprae-produto-service"; Image="comprae/produto-service:latest"}
     )
     
     $currentPath = Get-Location
@@ -179,18 +168,7 @@ function Clean-Environment {
         Write-Host "Removendo imagens..." -ForegroundColor Yellow
         $images = @(
             "comprae/config-server:latest",
-            "comprae/eureka-server:latest",
-            "comprae/api-gateway:latest",
-            "comprae/usuario-service:latest",
-            "comprae/produto-service:latest",
-            "comprae/categoria-service:latest",
-            "comprae/estoque-service:latest",
-            "comprae/carrinho-service:latest",
-            "comprae/pedido-service:latest",
-            "comprae/pagamento-service:latest",
-            "comprae/entrega-service:latest",
-            "comprae/notificacao-service:latest",
-            "comprae/avaliacao-service:latest"
+            "comprae/produto-service:latest"
         )
         
         foreach ($image in $images) {

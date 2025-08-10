@@ -8,13 +8,7 @@ $ErrorActionPreference = "SilentlyContinue"
 # Definição dos serviços e seus endpoints de health check
 $Services = @(
     @{Name="config-server"; Port=8888; Endpoint="/actuator/health"},
-    @{Name="eureka-server"; Port=8761; Endpoint="/actuator/health"},
-    @{Name="api-gateway"; Port=8080; Endpoint="/actuator/health"},
-    @{Name="user-service"; Port=8081; Endpoint="/actuator/health"},
     @{Name="product-service"; Port=8082; Endpoint="/actuator/health"},
-    @{Name="order-service"; Port=8083; Endpoint="/actuator/health"},
-    @{Name="payment-service"; Port=8084; Endpoint="/actuator/health"},
-    @{Name="notification-service"; Port=8085; Endpoint="/actuator/health"},
     @{Name="postgres"; Port=5432; Endpoint=""},
     @{Name="redis"; Port=6379; Endpoint=""},
     @{Name="kafka"; Port=9092; Endpoint=""},
