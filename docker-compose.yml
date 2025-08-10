@@ -9,8 +9,8 @@ services:
     container_name: comprae-postgres
     environment:
       POSTGRES_DB: comprae
-      POSTGRES_USER: comprae_user
-      POSTGRES_PASSWORD: comprae_pass
+      POSTGRES_USER: ${COMPRAE_USER}
+      POSTGRES_PASSWORD: ${COMPRAE_PASS}
       POSTGRES_MULTIPLE_DATABASES: comprae_usuarios,comprae_produtos,comprae_categorias,comprae_estoque,comprae_pedidos,comprae_pagamentos,comprae_entregas,comprae_avaliacoes
     ports:
       - "5432:5432"
@@ -20,7 +20,7 @@ services:
     networks:
       - comprae-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U comprae_user -d comprae"]
+      test: ["CMD-SHELL", "pg_isready -U ${COMPRAE_USER} -d comprae"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -148,8 +148,16 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_CLOUD_CONFIG_SERVER_GIT_URI=https://github.com/JonatasSilvaDev/comprae-config-repo
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae
+      - SPRING_DATASOURCE_USERNAME=${COMPRAE_USER}
+      - SPRING_DATASOURCE_PASSWORD=${COMPRAE_PASS}
+      - COMPRAE_USER=${COMPRAE_USER}
+      - COMPRAE_PASS=${COMPRAE_PASS}
     networks:
       - comprae-network
+    depends_on:
+      - postgres
+      - redis
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8888/actuator/health || exit 1"]
       interval: 30s
