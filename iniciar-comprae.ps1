@@ -66,6 +66,15 @@ docker-compose down
 Write-Host "Limpando containers orfaos..." -ForegroundColor Yellow
 docker-compose down --remove-orphans
 
+# Verificar se a imagem comprae-config-server existe
+$imgExists = docker images -q comprae-config-server
+if (-not $imgExists) {
+    Write-Host "Imagem comprae-config-server não encontrada. Realizando build automático..." -ForegroundColor Yellow
+    cd "..\comprae-config-server\config-server"
+    docker build -t comprae-config-server:latest .
+    cd "..\..\comprae-infra"
+}
+
 # Comando base
 $dockerCmd = "docker-compose up"
 
