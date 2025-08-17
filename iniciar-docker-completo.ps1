@@ -29,23 +29,24 @@ if (-not (Test-DockerRunning)) {
 }
 Write-Host "Docker esta rodando!" -ForegroundColor Green
 
-# Verificar se as imagens existem
+# Build automático das imagens caso não existam
 Write-Host "Verificando imagens Docker..." -ForegroundColor Yellow
 $configImage = docker images -q comprae/config-server:latest
 $produtoImage = docker images -q comprae/produto-service:latest
 
 if (-not $configImage) {
-    Write-Host "Imagem comprae/config-server:latest nao encontrada!" -ForegroundColor Red
-    Write-Host "Execute: docker build -t comprae/config-server:latest . no diretorio comprae-config-server/config-server" -ForegroundColor Yellow
-    exit 1
+    Write-Host "Imagem comprae/config-server:latest nao encontrada. Realizando build automático..." -ForegroundColor Yellow
+    Push-Location "..\comprae-config-server\config-server"
+    docker build -t comprae/config-server:latest .
+    Pop-Location
 }
 
 if (-not $produtoImage) {
-    Write-Host "Imagem comprae/produto-service:latest nao encontrada!" -ForegroundColor Red
-    Write-Host "Execute: docker build -t comprae/produto-service:latest . no diretorio comprae-produto-service-new" -ForegroundColor Yellow
-    exit 1
+    Write-Host "Imagem comprae/produto-service:latest nao encontrada. Realizando build automático..." -ForegroundColor Yellow
+    Push-Location "..\comprae-produto-service"
+    docker build -t comprae/produto-service:latest .
+    Pop-Location
 }
-
 Write-Host "Todas as imagens estao disponíveis!" -ForegroundColor Green
 
 # Parar containers existentes
