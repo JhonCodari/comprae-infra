@@ -148,8 +148,15 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_CLOUD_CONFIG_SERVER_GIT_URI=https://github.com/JonatasSilvaDev/comprae-config-repo
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae
+      - SPRING_DATASOURCE_USERNAME=${COMPRAE_USER}
+      - SPRING_DATASOURCE_PASSWORD=${COMPRAE_PASS}
+      - USERNAME=admin
+      - PASSWORD=${COMPRAE_PASS}
     networks:
       - comprae-network
+    depends_on:
+      - postgres
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
       interval: 30s
@@ -158,30 +165,31 @@ services:
 
 
   # Serviço de Produtos
-  # comprae-produto-service:
-  #   image: comprae/produto-service:latest
-  #   container_name: comprae-produto-service
-  #   ports:
-  #     - "8082:8082"
-  #   environment:
-  #     - SPRING_PROFILES_ACTIVE=docker
-  #     - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_produtos
-  #     - SPRING_DATASOURCE_USERNAME=${COMPRAE_USER}
-  #     - SPRING_DATASOURCE_PASSWORD=${COMPRAE_PASS}
-  #     - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
-  #     - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-  #   networks:
-  #     - comprae-network
-  #   depends_on:
-  #     - postgres
-  #     - redis
-  #     - kafka
-  #     - config-server
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8082/actuator/health || exit 1"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
+  comprae-produto-service:
+    image: comprae/produto-service:latest
+    container_name: comprae-produto-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_produtos
+      - SPRING_DATASOURCE_USERNAME=${COMPRAE_USER}
+      - SPRING_DATASOURCE_PASSWORD=${COMPRAE_PASS}
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    networks:
+      - comprae-network
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - config-server
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8082/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
 
   # ===================
   # MONITORAMENTO
