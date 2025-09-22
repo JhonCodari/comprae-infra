@@ -69,11 +69,12 @@ if ($Background) {
 # Mostrar informacoes dos servicos
 Write-Host ""
 Write-Host "Servicos que serao iniciados:" -ForegroundColor Cyan
-Write-Host "   PostgreSQL        : localhost:5432" -ForegroundColor White
+Write-Host "   PostgreSQL Config : localhost:5432 (configdb)" -ForegroundColor White
+Write-Host "   PostgreSQL Produto: localhost:5433 (comprae_produtos)" -ForegroundColor White
 Write-Host "   Redis             : localhost:6379" -ForegroundColor White
 Write-Host "   Kafka             : localhost:9092" -ForegroundColor White
-Write-Host "   Config Server     : localhost:8888" -ForegroundColor White
-Write-Host "   Produto Service   : localhost:8082" -ForegroundColor White
+Write-Host "   Config Server     : localhost:8080" -ForegroundColor White
+Write-Host "   Produto Service   : localhost:8081" -ForegroundColor White
 Write-Host "   Elasticsearch     : localhost:9200" -ForegroundColor White
 Write-Host "   Kibana            : localhost:5601" -ForegroundColor White
 Write-Host "   Grafana           : localhost:3000 (admin/admin123)" -ForegroundColor White
@@ -107,7 +108,7 @@ try {
         
         # Testar Config Server
         try {
-            $response = Invoke-WebRequest -Uri "http://localhost:8888/actuator/health" -TimeoutSec 5
+            Invoke-WebRequest -Uri "http://localhost:8080/actuator/health" -TimeoutSec 5 | Out-Null
             Write-Host "   Config Server: ONLINE" -ForegroundColor Green
         } catch {
             Write-Host "   Config Server: OFFLINE" -ForegroundColor Red
@@ -115,7 +116,7 @@ try {
         
         # Testar Produto Service
         try {
-            $response = Invoke-WebRequest -Uri "http://localhost:8082/api/produtos/health" -TimeoutSec 5
+            Invoke-WebRequest -Uri "http://localhost:8081/actuator/health" -TimeoutSec 5 | Out-Null
             Write-Host "   Produto Service: ONLINE" -ForegroundColor Green
         } catch {
             Write-Host "   Produto Service: OFFLINE" -ForegroundColor Red
@@ -138,10 +139,10 @@ Write-Host ""
 Write-Host "Ecossistema Comprae inicializado com sucesso!" -ForegroundColor Green
 Write-Host ""
 Write-Host "Endpoints para teste:" -ForegroundColor Cyan
-Write-Host "   Config Server     : http://localhost:8888/actuator/health" -ForegroundColor White
-Write-Host "   Produto Health    : http://localhost:8082/api/produtos/health" -ForegroundColor White
-Write-Host "   Produto API       : http://localhost:8082/api/produtos" -ForegroundColor White
-Write-Host "   Spring Actuator   : http://localhost:8082/actuator/health" -ForegroundColor White
+Write-Host "   Config Server     : http://localhost:8080/actuator/health" -ForegroundColor White
+Write-Host "   Config API        : http://localhost:8080/api/v1/configuracoes" -ForegroundColor White
+Write-Host "   Produto Health    : http://localhost:8081/actuator/health" -ForegroundColor White
+Write-Host "   Produto API       : http://localhost:8081/api/produtos" -ForegroundColor White
 Write-Host ""
 Write-Host "Comandos uteis:" -ForegroundColor Cyan
 Write-Host "   Ver status: docker-compose ps" -ForegroundColor White

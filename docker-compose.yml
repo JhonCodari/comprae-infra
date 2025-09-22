@@ -3,24 +3,44 @@ services:
   # INFRAESTRUTURA BASE
   # ===================
   
-  # PostgreSQL Database
-  postgres:
+  # PostgreSQL para Config Server
+  postgres-config:
     image: postgres:15-alpine
-    container_name: comprae-postgres
+    container_name: comprae-postgres-config
     environment:
-      POSTGRES_DB: comprae
-      POSTGRES_USER: ${COMPRAE_USER}
-      POSTGRES_PASSWORD: ${COMPRAE_PASS}
-      POSTGRES_MULTIPLE_DATABASES: comprae_usuarios,comprae_produtos,comprae_categorias,comprae_estoque,comprae_pedidos,comprae_pagamentos,comprae_entregas,comprae_avaliacoes
+      POSTGRES_DB: configdb
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=pt_BR.UTF-8"
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
+      - postgres_config_data:/var/lib/postgresql/data
     networks:
       - comprae-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${COMPRAE_USER} -d comprae"]
+      test: ["CMD-SHELL", "pg_isready -U admin -d configdb"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL para Produto Service
+  postgres-produto:
+    image: postgres:15-alpine
+    container_name: comprae-postgres-produto
+    environment:
+      POSTGRES_DB: comprae_produtos
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=pt_BR.UTF-8"
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_produto_data:/var/lib/postgresql/data
+    networks:
+      - comprae-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d comprae_produtos"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -66,22 +86,12 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    volumes:
-      - kafka_data:/var/lib/kafka/data
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
     networks:
       - comprae-network
-    healthcheck:
-      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    restart: unless-stopped
 
   # Kafka UI para gerenciamento
   kafka-ui:
@@ -93,8 +103,10 @@ services:
       - "8090:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: comprae-cluster
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - comprae-network
 
   # Elasticsearch for logging and search
   elasticsearch:
@@ -141,55 +153,78 @@ services:
 
   # Servidor de Configuração
   config-server:
-    image: comprae-config-server:latest
+    image: comprae/config-server:latest
     container_name: comprae-config-server
+    depends_on:
+      - postgres-config
+      - redis
+      - kafka
     ports:
-      - "8888:8080"
+      - "8080:8080"
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CLOUD_CONFIG_SERVER_GIT_URI=https://github.com/JonatasSilvaDev/comprae-config-repo
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae
-      - SPRING_DATASOURCE_USERNAME=${COMPRAE_USER}
-      - SPRING_DATASOURCE_PASSWORD=${COMPRAE_PASS}
-      - USERNAME=admin
-      - PASSWORD=${COMPRAE_PASS}
+      # Configurações do banco de dados
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-config:5432/configdb
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: admin123
+
+      # Configurações do Redis
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      
+      # Configurações do Kafka
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      
+      # Configurações de segurança
+      USERNAME: admin
+      PASSWORD: admin123
+
+      # Configurações de ambiente
+      SPRING_PROFILES_ACTIVE: docker
+      
+      # Configurações de JVM
+      JAVA_OPTS: "-Xmx512m -Xms256m -XX:+UseG1GC"
     networks:
       - comprae-network
-    depends_on:
-      - postgres
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    restart: unless-stopped
 
 
   # Serviço de Produtos
-  comprae-produto-service:
+  produto-service:
     image: comprae/produto-service:latest
     container_name: comprae-produto-service
-    ports:
-      - "8082:8082"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/comprae_produtos
-      - SPRING_DATASOURCE_USERNAME=${COMPRAE_USER}
-      - SPRING_DATASOURCE_PASSWORD=${COMPRAE_PASS}
-      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-    networks:
-      - comprae-network
     depends_on:
-      - postgres
+      - postgres-produto
+      - config-server
       - redis
       - kafka
-      - config-server
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8082/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 15s
-      retries: 5
-      start_period: 60s
+    ports:
+      - "8081:8082"
+    environment:
+      # Configurações do banco de dados
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-produto:5432/comprae_produtos
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: admin123
+      
+      # Configurações do servidor de configuração
+      SPRING_CLOUD_CONFIG_URI: http://config-server:8080
+      SPRING_CLOUD_CONFIG_USERNAME: admin
+      SPRING_CLOUD_CONFIG_PASSWORD: admin123
+      
+      # Configurações do Redis
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      
+      # Configurações do Kafka
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      
+      # Configurações de ambiente
+      SPRING_PROFILES_ACTIVE: docker
+      
+      # Configurações de JVM
+      JAVA_OPTS: "-Xmx1024m -Xms512m -XX:+UseG1GC"
+    networks:
+      - comprae-network
+    restart: unless-stopped
 
   # ===================
   # MONITORAMENTO
@@ -245,7 +280,8 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
+  postgres_config_data:
+  postgres_produto_data:
   redis_data:
   zookeeper_data:
   zookeeper_logs:
