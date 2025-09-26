@@ -19,7 +19,7 @@ scrape_configs:
       username: admin
       password: admin123
     static_configs:
-      - targets: ['config-server:8080']
+      - targets: ['comprae-config-server:8080']
     scrape_interval: 30s
 
   # Servidor Eureka
@@ -107,20 +107,26 @@ scrape_configs:
     scrape_interval: 30s
 
   # Serviços de Infraestrutura
-  - job_name: 'postgres'
-    static_configs:
-      - targets: ['postgres:5432']
-    scrape_interval: 60s
+  # Postgres monitoring disabled - Postgres doesn't expose HTTP metrics by default
+  # To monitor Postgres, use postgres_exporter
+  # - job_name: 'postgres'
+  #   static_configs:
+  #     - targets: ['postgres:5432']
+  #   scrape_interval: 60s
 
-  - job_name: 'redis'
-    static_configs:
-      - targets: ['redis:6379']
-    scrape_interval: 60s
+  # Redis monitoring disabled - Redis doesn't expose HTTP metrics by default
+  # To monitor Redis, use a Redis Exporter like https://github.com/oliver006/redis_exporter
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis:6379']
+  #   scrape_interval: 60s
 
-  - job_name: 'kafka'
-    static_configs:
-      - targets: ['kafka:9092']
-    scrape_interval: 60s
+  # Kafka monitoring disabled - Kafka doesn't expose HTTP metrics by default
+  # To monitor Kafka, use kafka_exporter or JMX exporter
+  # - job_name: 'kafka'
+  #   static_configs:
+  #     - targets: ['kafka:9092']
+  #   scrape_interval: 60s
 
   - job_name: 'elasticsearch'
     static_configs:
