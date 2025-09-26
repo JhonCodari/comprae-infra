@@ -55,6 +55,14 @@ services:
       - redis_data:/data
     networks:
       - comprae-network
+    command: >
+      redis-server
+      --protected-mode no
+      --bind 0.0.0.0
+      --timeout 0
+      --tcp-keepalive 300
+      --maxmemory-policy allkeys-lru
+      --save ""
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
