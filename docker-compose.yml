@@ -198,6 +198,9 @@ services:
 
   # Serviço de Produtos
   produto-service:
+    build:
+      context: ../comprae-produto-service
+      dockerfile: Dockerfile
     image: comprae/produto-service:latest
     container_name: comprae-produto-service
     depends_on:
